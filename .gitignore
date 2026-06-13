@@ -1,0 +1,4 @@
+license_private_key.json
+public_jwk.json
+node_modules/
+.DS_Store

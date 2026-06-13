@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PlantedTank — Freshwater Planted Aquarium Tracker</title>
+<meta name="description" content="Free private tracker for freshwater planted aquariums. Log water tests (pH, KH, GH, NO3, PO4), fertilizer dosing, and maintenance. Range flags, trends, CSV export. Offline, no account.">
+<meta name="theme-color" content="#0b1f17">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+<style>
+  :root{
+    --bg:#081a13; --bg2:#0b231a; --panel:#0f2c20; --panel2:#103428;
+    --line:#1c4533; --line2:#256b4d;
+    --text:#e6f5ec; --muted:#7fae97; --muted2:#5e8a73;
+    --aqua:#34e0c4; --green:#4ade80; --leaf:#86efac;
+    --warn:#fbbf24; --bad:#f87171; --good:#34d399;
+    --accent:#2dd4bf; --accent2:#22c55e;
+    --shadow:0 6px 24px rgba(0,0,0,.35);
+    --r:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:radial-gradient(1200px 600px at 80% -10%, #0d3326 0%, var(--bg) 55%) fixed;
+    color:var(--text); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh; padding:0 0 90px;
+  }
+  a{color:var(--aqua);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:820px;margin:0 auto;padding:0 14px}
+  header.top{
+    position:sticky;top:0;z-index:30;backdrop-filter:blur(10px);
+    background:linear-gradient(180deg, rgba(8,26,19,.96), rgba(8,26,19,.82));
+    border-bottom:1px solid var(--line);
+  }
+  .topin{display:flex;align-items:center;gap:10px;max-width:820px;margin:0 auto;padding:11px 14px}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:18px;letter-spacing:.2px}
+  .logo .mk{font-size:22px;filter:drop-shadow(0 2px 6px rgba(52,224,196,.4))}
+  .logo b{background:linear-gradient(90deg,var(--leaf),var(--aqua));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .spacer{flex:1}
+  .badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--muted)}
+  .badge.pro{color:#06281f;background:linear-gradient(90deg,var(--leaf),var(--aqua));border:0}
+  button,.btn{
+    font:inherit;font-weight:600;cursor:pointer;border:1px solid var(--line2);
+    background:var(--panel2);color:var(--text);padding:9px 14px;border-radius:11px;transition:.15s;
+  }
+  button:hover,.btn:hover{border-color:var(--accent);background:#13402f}
+  button:active{transform:translateY(1px)}
+  .btn.pri{background:linear-gradient(90deg,var(--accent2),var(--accent));color:#052016;border:0;font-weight:800}
+  .btn.pri:hover{filter:brightness(1.08)}
+  .btn.ghost{background:transparent}
+  .btn.sm{padding:6px 10px;font-size:13px;border-radius:9px}
+  .btn.pro{background:linear-gradient(90deg,#f0c000,#fbbf24);color:#2a1d00;border:0;font-weight:800}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px;margin:13px 0;box-shadow:var(--shadow)}
+  .muted{color:var(--muted)}
+  .small{font-size:13px}
+  .tiny{font-size:11px}
+  h1,h2,h3{margin:0 0 10px}
+  h2{font-size:19px}
+  h3{font-size:15px;color:var(--muted)}
+  label{display:block;font-size:12px;color:var(--muted);margin:0 0 4px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+  input,select,textarea{
+    width:100%;font:inherit;color:var(--text);background:#08221a;
+    border:1px solid var(--line);border-radius:10px;padding:10px 11px;outline:none;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  textarea{min-height:64px;resize:vertical}
+  .grid{display:grid;gap:11px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:1fr 1fr 1fr}
+  @media(max-width:520px){.g3{grid-template-columns:1fr 1fr}}
+  .field{min-width:0}
+  /* tanks list */
+  .tankcard{display:flex;align-items:center;gap:12px;cursor:pointer}
+  .tankcard:hover{border-color:var(--line2)}
+  .tankicon{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:24px;background:linear-gradient(160deg,#103a2b,#0a261c);border:1px solid var(--line2);flex:0 0 auto}
+  .tankmeta{flex:1;min-width:0}
+  .tankmeta .nm{font-weight:700;font-size:16px}
+  .chev{color:var(--muted);font-size:20px}
+  /* tiles */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:9px}
+  .tile{background:#08231a;border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center;position:relative}
+  .tile .k{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted2);font-weight:700}
+  .tile .v{font-size:21px;font-weight:800;margin:3px 0 1px;line-height:1.1}
+  .tile .u{font-size:10px;color:var(--muted)}
+  .tile.warn{border-color:var(--warn);box-shadow:inset 0 0 0 1px rgba(251,191,36,.25)}
+  .tile.warn .v{color:var(--warn)}
+  .tile .trend{position:absolute;top:7px;right:8px;font-size:11px;font-weight:700}
+  .up{color:var(--good)} .dn{color:var(--aqua)} .flat{color:var(--muted2)}
+  /* entries */
+  .entry{border-left:3px solid var(--line2);padding:9px 0 9px 12px;margin:0 0 4px}
+  .entry .when{font-size:12px;color:var(--muted)}
+  .entry .typ{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:999px;margin-right:7px;vertical-align:1px}
+  .t-test{background:#0c3aa033;color:#7fb4ff;border:1px solid #25539e}
+  .t-dose{background:#16432e;color:var(--leaf);border:1px solid var(--line2)}
+  .t-maint{background:#3a2a08;color:var(--warn);border:1px solid #6b5012}
+  .t-plant{background:#103a2b;color:var(--aqua);border:1px solid var(--line2)}
+  .t-note{background:#222;color:#cbd5e1;border:1px solid #3a3a3a}
+  .entry .body{margin-top:3px}
+  .kv{display:inline-block;margin:2px 10px 2px 0}
+  .kv b{color:var(--text)}
+  .kv.bad b{color:var(--warn)}
+  .delx{float:right;color:var(--muted2);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:6px}
+  .delx:hover{color:var(--bad);background:#2a1212}
+  /* segmented type picker */
+  .seg{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
+  .seg button{flex:1;min-width:78px;padding:9px 6px;font-size:13px;background:#08231a}
+  .seg button.on{background:linear-gradient(90deg,var(--accent2),var(--accent));color:#052016;border-color:transparent;font-weight:800}
+  /* modal */
+  .bg{position:fixed;inset:0;background:rgba(2,10,7,.7);backdrop-filter:blur(4px);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto}
+  .modal{background:var(--panel);border:1px solid var(--line2);border-radius:18px;max-width:480px;width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .modal h2{display:flex;align-items:center;gap:9px}
+  .x{position:absolute;top:14px;right:16px;font-size:22px;color:var(--muted);cursor:pointer;line-height:1}
+  .modal{position:relative}
+  .feat{margin:12px 0;padding:0;list-style:none}
+  .feat li{padding:6px 0 6px 26px;position:relative;color:var(--text)}
+  .feat li:before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:900}
+  .pay{background:#08231a;border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0}
+  .copyrow{display:flex;gap:8px;margin-top:4px}
+  .copyrow input{font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  .err{color:var(--bad);font-size:13px;min-height:18px;margin-top:6px}
+  .ok{color:var(--good);font-size:13px;min-height:18px;margin-top:6px;font-weight:700}
+  details{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+  summary{cursor:pointer;color:var(--aqua);font-weight:600}
+  /* charts */
+  .chart{background:#08231a;border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;overflow:hidden}
+  .chart h4{margin:0 0 4px;font-size:13px;color:var(--muted);font-weight:700}
+  svg{display:block;width:100%;height:auto}
+  .legend{font-size:11px;color:var(--muted);margin-top:4px}
+  .empty{text-align:center;color:var(--muted);padding:30px 10px}
+  .empty .em{font-size:40px;opacity:.7}
+  .backlink{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-weight:600;cursor:pointer;margin:4px 0 8px}
+  .backlink:hover{color:var(--text)}
+  .footer{margin:30px 0 0;color:var(--muted2);font-size:12px;text-align:center;line-height:1.7}
+  .footer a{color:var(--muted)}
+  .prolock{font-size:11px;color:var(--warn);font-weight:700;margin-left:6px}
+  .seedbtn{margin-top:6px}
+  hr.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="topin">
+    <div class="logo"><span class="mk">🌿</span><span><b>PlantedTank</b></span></div>
+    <span class="spacer"></span>
+    <span id="proBadge" class="badge">FREE</span>
+    <button id="proBtn" class="btn pro sm">Pro</button>
+  </div>
+</header>
+
+<div class="wrap" id="app"></div>
+
+<div class="wrap">
+  <div class="footer">
+    100% private &amp; offline — your logs live only in this browser (localStorage).<br>
+    Planted aquarium guides:
+    <a href="./planted-aquarium-tracker.html">Tracker guide</a> ·
+    <a href="./aquarium-fertilizer-dosing-log.html">Fertilizer dosing</a><br>
+    Not medical/vet advice. Reference ranges are general guidance for low–high tech planted tanks.
+  </div>
+</div>
+
+<script>
+/* =================== LICENSING (verbatim spec) =================== */
+const PUBLIC_JWK={"kty":"EC","x":"jtG9fuuMa-T0h41TAseKogDYt7b-dOBhoXix1tnPaDE","y":"6JR80ofJZjBvcFHly11wS8K2QMnAWWMgHKbptAoMhZE","crv":"P-256"};
+const PAY = { wallet:"0xe339997037C7e1C81829fA3e110d3e82B4bDd48E", chain:"Base", token:"USDC", price:"9", contact:"https://github.com/AlexeySamosadov/plantedtank/issues/new" };
+let pro=false;
+function fromB(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";const b=atob(s);const a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
+async function verifyLicense(str){try{const[p,sg]=str.trim().split(".");if(!p||!sg)return null;const k=await crypto.subtle.importKey("jwk",PUBLIC_JWK,{name:"ECDSA",namedCurve:"P-256"},false,["verify"]);if(!await crypto.subtle.verify({name:"ECDSA",hash:"SHA-256"},k,fromB(sg),fromB(p)))return null;const pl=JSON.parse(new TextDecoder().decode(fromB(p)));if(pl.exp&&Math.floor(Date.now()/1000)>pl.exp)return{expired:true};return pl;}catch(e){return null;}}
+async function applyLicense(str,silent){const pl=await verifyLicense(str);if(pl&&!pl.expired&&pl.plan==="pro"){pro=true;localStorage.setItem("plantedtank_license",str);if(typeof render==="function")render();if(!silent){const o=document.querySelector("#licOk");if(o)o.textContent="Unlocked — thank you";setTimeout(()=>{const b=document.querySelector("#licBg");if(b)b.remove();},800);}return true;}if(!silent){const e=document.querySelector("#licErr");if(e)e.textContent=pl&&pl.expired?"License expired.":"Invalid key.";}return false;}
+
+/* =================== DATA LAYER =================== */
+const LS="plantedtank_data_v1";
+let DB=load();
+let view={tank:null};      // null = tank list, else tank id
+let formType="test";
+
+function load(){
+  try{const d=JSON.parse(localStorage.getItem(LS));if(d&&d.tanks)return d;}catch(e){}
+  return {tanks:[]};
+}
+function save(){localStorage.setItem(LS,JSON.stringify(DB));}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function fmtDate(ts){const d=new Date(ts);return d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});}
+function dayKey(ts){const d=new Date(ts);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+
+function getTank(id){return DB.tanks.find(t=>t.id===id);}
+function addTank(name,liters){const t={id:uid(),name:name||"My Tank",liters:liters||"",created:Date.now(),entries:[]};DB.tanks.push(t);save();return t;}
+
+/* reference ranges for planted tanks; min/max inclusive */
+const RANGES={
+  ph:   {min:6.0,max:7.6,label:"pH",unit:""},
+  kh:   {min:3,  max:8,  label:"KH",unit:"dKH"},
+  gh:   {min:4,  max:12, label:"GH",unit:"dGH"},
+  temp: {min:22, max:26, label:"Temp",unit:"°C"},
+  no3:  {min:10, max:30, label:"NO₃",unit:"ppm"},
+  po4:  {min:1,  max:3,  label:"PO₄",unit:"ppm"},
+  fe:   {min:0.05,max:0.5,label:"Fe",unit:"ppm"},
+  nh3:  {min:0, max:0,   label:"NH₃",unit:"ppm"},
+  no2:  {min:0, max:0,   label:"NO₂",unit:"ppm"}
+};
+const TILE_ORDER=["ph","kh","gh","temp","no3","po4","fe","nh3","no2"];
+function inRange(key,v){const r=RANGES[key];if(!r||v==null||v==="")return true;v=Number(v);if(isNaN(v))return true;return v>=r.min&&v<=r.max;}
+
+/* =================== RENDER =================== */
+const app=document.getElementById("app");
+function render(){
+  document.getElementById("proBadge").textContent=pro?"PRO":"FREE";
+  document.getElementById("proBadge").className="badge"+(pro?" pro":"");
+  document.getElementById("proBtn").style.display=pro?"none":"";
+  if(view.tank&&getTank(view.tank))renderTank(getTank(view.tank));
+  else renderHome();
+}
+
+function renderHome(){
+  let h="";
+  h+=`<div class="card">
+    <h2>Your tanks</h2>
+    <div class="grid g2" style="margin-bottom:6px">
+      <div class="field"><label>Tank name</label><input id="ntName" placeholder="e.g. 60P Iwagumi"></div>
+      <div class="field"><label>Volume (liters, optional)</label><input id="ntLit" type="number" inputmode="decimal" placeholder="e.g. 60"></div>
+    </div>
+    <button class="btn pri" onclick="onAddTank()">+ Add tank</button>
+  </div>`;
+
+  if(!DB.tanks.length){
+    h+=`<div class="card empty">
+      <div class="em">🪴</div>
+      <p>No tanks yet. Add your first planted aquarium above.</p>
+      <button class="btn ghost seedbtn" onclick="seedDemo()">Load a demo tank</button>
+    </div>`;
+  }else{
+    for(const t of DB.tanks){
+      const last=t.entries[0];
+      const wt=lastOfType(t,"test");
+      let sub=`${t.entries.length} entr${t.entries.length===1?"y":"ies"}`;
+      if(t.liters)sub=`${esc(t.liters)} L · `+sub;
+      if(last)sub+=` · last ${fmtDate(last.ts).split(",")[0]}`;
+      h+=`<div class="card tankcard" onclick="openTank('${t.id}')">
+        <div class="tankicon">🌿</div>
+        <div class="tankmeta">
+          <div class="nm">${esc(t.name)}</div>
+          <div class="muted small">${sub}</div>
+          ${wt?paramSummaryLine(wt):""}
+        </div>
+        <div class="chev">›</div>
+      </div>`;
+    }
+  }
+  app.innerHTML=h;
+}
+function paramSummaryLine(wt){
+  const bits=[];
+  for(const k of ["no3","po4","kh","ph"]){
+    const v=wt.data[k];
+    if(v!=null&&v!==""){const bad=!inRange(k,v);bits.push(`<span class="${bad?"warn":""}" style="${bad?"color:var(--warn)":"color:var(--muted)"}">${RANGES[k].label} ${esc(v)}</span>`);}
+  }
+  return bits.length?`<div class="tiny" style="margin-top:3px">${bits.join(" · ")}</div>`:"";
+}
+
+function lastOfType(t,type){return t.entries.find(e=>e.type===type);}
+
+function renderTank(t){
+  let h="";
+  h+=`<div class="backlink" onclick="goHome()">‹ All tanks</div>`;
+  h+=`<div class="card">
+    <div class="row">
+      <h2 style="margin:0;flex:1">${esc(t.name)}</h2>
+      <button class="btn sm ghost" onclick="renameTank('${t.id}')">Rename</button>
+      <button class="btn sm ghost" onclick="deleteTank('${t.id}')">Delete</button>
+    </div>
+    <div class="muted small">${t.liters?esc(t.liters)+" L · ":""}${t.entries.length} entries · since ${new Date(t.created).toLocaleDateString()}</div>`;
+  h+=currentTiles(t);
+  h+=`</div>`;
+
+  // add-entry card
+  h+=`<div class="card">
+    <h3>Add entry</h3>
+    <div class="seg">
+      ${segBtn("test","Water test","t-test")}
+      ${segBtn("dose","Dosing","t-dose")}
+      ${segBtn("maint","Maintenance","t-maint")}
+      ${segBtn("plant","Plant added","t-plant")}
+      ${segBtn("note","Note","t-note")}
+    </div>
+    <div id="entryForm">${entryForm(t)}</div>
+  </div>`;
+
+  // pro features row
+  h+=`<div class="card">
+    <div class="row">
+      <button class="btn sm" onclick="exportCSV('${t.id}')">⬇ Export CSV ${pro?"":'<span class="prolock">PRO</span>'}</button>
+      <button class="btn sm" onclick="showCharts('${t.id}')">📈 Trends ${pro?"":'<span class="prolock">PRO</span>'}</button>
+      <button class="btn sm" onclick="showSchedule('${t.id}')">🗓 Dosing schedule ${pro?"":'<span class="prolock">PRO</span>'}</button>
+    </div>
+    <div id="proPane"></div>
+  </div>`;
+
+  // history
+  h+=`<div class="card">
+    <h3>History</h3>
+    <div id="history">${historyHtml(t)}</div>
+  </div>`;
+  app.innerHTML=h;
+}
+
+function segBtn(type,label,cls){
+  return `<button class="${formType===type?"on":""}" onclick="setType('${type}')">${label}</button>`;
+}
+function setType(t){formType=t;document.getElementById("entryForm").innerHTML=entryForm(getTank(view.tank));
+  // reflect active seg
+  const segs=document.querySelectorAll(".seg button");const labels=["test","dose","maint","plant","note"];
+  segs.forEach((b,i)=>b.classList.toggle("on",labels[i]===t));}
+
+function dateInputDefault(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);}
+
+function entryForm(t){
+  const dt=`<div class="field"><label>Date &amp; time</label><input id="f_dt" type="datetime-local" value="${dateInputDefault()}"></div>`;
+  if(formType==="test"){
+    return `<div class="grid g2">${dt}<div class="field"><label>Temp °C</label><input id="f_temp" type="number" inputmode="decimal" step="0.1" placeholder="24"></div></div>
+    <div class="grid g3" style="margin-top:11px">
+      <div class="field"><label>pH</label><input id="f_ph" type="number" inputmode="decimal" step="0.1" placeholder="6.8"></div>
+      <div class="field"><label>KH dKH</label><input id="f_kh" type="number" inputmode="decimal" step="0.5" placeholder="4"></div>
+      <div class="field"><label>GH dGH</label><input id="f_gh" type="number" inputmode="decimal" step="0.5" placeholder="7"></div>
+      <div class="field"><label>NO₃ ppm</label><input id="f_no3" type="number" inputmode="decimal" step="0.5" placeholder="20"></div>
+      <div class="field"><label>PO₄ ppm</label><input id="f_po4" type="number" inputmode="decimal" step="0.1" placeholder="1.5"></div>
+      <div class="field"><label>Fe ppm</label><input id="f_fe" type="number" inputmode="decimal" step="0.01" placeholder="opt"></div>
+      <div class="field"><label>NH₃ ppm</label><input id="f_nh3" type="number" inputmode="decimal" step="0.05" placeholder="opt"></div>
+      <div class="field"><label>NO₂ ppm</label><input id="f_no2" type="number" inputmode="decimal" step="0.05" placeholder="opt"></div>
+    </div>
+    <button class="btn pri" style="margin-top:12px" onclick="saveEntry()">Save water test</button>`;
+  }
+  if(formType==="dose"){
+    return `<div class="grid g2">${dt}
+      <div class="field"><label>Type</label><select id="f_class"><option value="macro">Macro (N/P/K)</option><option value="micro">Micro (trace/Fe)</option><option value="other">Other / liquid carbon</option></select></div></div>
+    <div class="grid g2" style="margin-top:11px">
+      <div class="field"><label>Fertilizer name</label><input id="f_fert" placeholder="e.g. KNO₃, Tropica Specialised, Easy Green"></div>
+      <div class="field"><label>Amount</label><input id="f_amt" placeholder="e.g. 5 ml / 1/4 tsp"></div>
+    </div>
+    <button class="btn pri" style="margin-top:12px" onclick="saveEntry()">Save dosing</button>`;
+  }
+  if(formType==="maint"){
+    return `<div class="grid g2">${dt}
+      <div class="field"><label>Water change %</label><input id="f_wc" type="number" inputmode="decimal" placeholder="e.g. 50"></div></div>
+    <div style="margin-top:11px"><label>Tasks done</label>
+      <div class="row" id="maintChips">
+        ${["Trim","Glass clean","Filter rinse","Vacuum substrate","Top off"].map(x=>`<label class="row" style="display:inline-flex;gap:6px;margin:0;border:1px solid var(--line);padding:7px 11px;border-radius:10px;cursor:pointer;text-transform:none;font-size:13px;color:var(--text)"><input type="checkbox" value="${x}" style="width:auto;margin:0" class="mchk">${x}</label>`).join("")}
+      </div>
+    </div>
+    <div class="field" style="margin-top:11px"><label>Notes (optional)</label><input id="f_mnote" placeholder="e.g. cleaned drop checker"></div>
+    <button class="btn pri" style="margin-top:12px" onclick="saveEntry()">Save maintenance</button>`;
+  }
+  if(formType==="plant"){
+    return `<div class="grid g2">${dt}
+      <div class="field"><label>Quantity (optional)</label><input id="f_qty" placeholder="e.g. 1 pot, 5 stems"></div></div>
+    <div class="grid g2" style="margin-top:11px">
+      <div class="field"><label>Plant name</label><input id="f_plant" placeholder="e.g. Rotala rotundifolia"></div>
+      <div class="field"><label>Placement (optional)</label><input id="f_place" placeholder="e.g. background left"></div>
+    </div>
+    <button class="btn pri" style="margin-top:12px" onclick="saveEntry()">Save plant</button>`;
+  }
+  // note
+  return `${dt}
+  <div class="field" style="margin-top:11px"><label>Note</label><textarea id="f_note" placeholder="Algae spotted on glass, livestock behaviour, CO₂ tweaks, anything…"></textarea></div>
+  <button class="btn pri" style="margin-top:12px" onclick="saveEntry()">Save note</button>`;
+}
+
+function num(id){const el=document.getElementById(id);if(!el)return undefined;const v=el.value.trim();if(v==="")return "";return v;}
+function val(id){const el=document.getElementById(id);return el?el.value.trim():"";}
+
+function saveEntry(){
+  const t=getTank(view.tank);if(!t)return;
+  const dtEl=document.getElementById("f_dt");
+  let ts=Date.now();
+  if(dtEl&&dtEl.value){const p=new Date(dtEl.value);if(!isNaN(p))ts=p.getTime();}
+  let e={id:uid(),ts,type:formType,data:{}};
+  if(formType==="test"){
+    const keys=["temp","ph","kh","gh","no3","po4","fe","nh3","no2"];
+    let any=false;
+    for(const k of keys){const v=val("f_"+k);if(v!==""){e.data[k]=v;any=true;}}
+    if(!any){alert("Enter at least one parameter.");return;}
+  }else if(formType==="dose"){
+    const fert=val("f_fert");if(!fert){alert("Enter a fertilizer name.");return;}
+    e.data={class:val("f_class"),fert,amt:val("f_amt")};
+  }else if(formType==="maint"){
+    const tasks=[...document.querySelectorAll(".mchk:checked")].map(c=>c.value);
+    const wc=val("f_wc");const note=val("f_mnote");
+    if(!tasks.length&&!wc&&!note){alert("Pick a task or enter a water change %.");return;}
+    e.data={wc,tasks,note};
+  }else if(formType==="plant"){
+    const plant=val("f_plant");if(!plant){alert("Enter a plant name.");return;}
+    e.data={plant,qty:val("f_qty"),place:val("f_place")};
+  }else{
+    const note=val("f_note");if(!note){alert("Write something first.");return;}
+    e.data={note};
+  }
+  t.entries.unshift(e);
+  t.entries.sort((a,b)=>b.ts-a.ts);
+  save();render();
+}
+
+function delEntry(tid,eid){const t=getTank(tid);if(!t)return;t.entries=t.entries.filter(e=>e.id!==eid);save();render();}
+
+/* current tiles: latest test params w/ trend vs previous + range flag */
+function currentTiles(t){
+  const tests=t.entries.filter(e=>e.type==="test").sort((a,b)=>b.ts-a.ts);
+  if(!tests.length)return `<div class="muted small" style="margin-top:10px">No water tests yet — log one below to see current parameters and range flags.</div>`;
+  const cur=tests[0];
+  // for each key, find most recent value and the previous distinct value
+  let h=`<div class="tiles" style="margin-top:12px">`;
+  let shown=0;
+  for(const k of TILE_ORDER){
+    const v=cur.data[k];
+    if(v==null||v==="")continue;
+    shown++;
+    const bad=!inRange(k,v);
+    // previous value for this key
+    let prev=null;
+    for(let i=1;i<tests.length;i++){const pv=tests[i].data[k];if(pv!=null&&pv!==""){prev=Number(pv);break;}}
+    let trend="";
+    const cv=Number(v);
+    if(prev!=null&&!isNaN(cv)){
+      if(cv>prev)trend=`<span class="trend up">▲</span>`;
+      else if(cv<prev)trend=`<span class="trend dn">▼</span>`;
+      else trend=`<span class="trend flat">＝</span>`;
+    }
+    const r=RANGES[k];
+    h+=`<div class="tile${bad?" warn":""}" title="${bad?"Outside common planted range "+r.min+"–"+r.max:"Within common range"}">
+      ${trend}
+      <div class="k">${r.label}</div>
+      <div class="v">${esc(v)}</div>
+      <div class="u">${r.unit||"&nbsp;"}</div>
+    </div>`;
+  }
+  h+=`</div>`;
+  h+=`<div class="tiny muted" style="margin-top:8px">Tested ${fmtDate(cur.ts)}. <span style="color:var(--warn)">Amber</span> = outside common planted range.</div>`;
+  return shown?h:"";
+}
+
+/* history */
+function historyHtml(t){
+  if(!t.entries.length)return `<div class="muted small">No entries yet.</div>`;
+  let h="";
+  let lastDay="";
+  for(const e of t.entries){
+    const dk=dayKey(e.ts);
+    h+=`<div class="entry">
+      <span class="delx" onclick="delEntry('${t.id}','${e.id}')">✕ delete</span>
+      <span class="when">${fmtDate(e.ts)}</span><br>
+      <div class="body">${entryLabel(e)}${entryBody(e)}</div>
+    </div>`;
+  }
+  return h;
+}
+function entryLabel(e){
+  const map={test:["t-test","Water test"],dose:["t-dose","Dosing"],maint:["t-maint","Maintenance"],plant:["t-plant","Plant"],note:["t-note","Note"]};
+  const m=map[e.type]||["t-note","Note"];
+  return `<span class="typ ${m[0]}">${m[1]}</span>`;
+}
+function entryBody(e){
+  if(e.type==="test"){
+    let out="";
+    for(const k of TILE_ORDER){
+      const v=e.data[k];if(v==null||v==="")continue;
+      const bad=!inRange(k,v);
+      out+=`<span class="kv${bad?" bad":""}">${RANGES[k].label} <b>${esc(v)}${RANGES[k].unit?" "+RANGES[k].unit:""}</b></span>`;
+    }
+    return out||`<span class="muted">—</span>`;
+  }
+  if(e.type==="dose"){
+    const c={macro:"Macro",micro:"Micro",other:"Other"}[e.data.class]||"";
+    return `<span class="kv"><b>${esc(e.data.fert)}</b></span>${e.data.amt?`<span class="kv">${esc(e.data.amt)}</span>`:""}${c?`<span class="kv muted">${c}</span>`:""}`;
+  }
+  if(e.type==="maint"){
+    let out="";
+    if(e.data.wc)out+=`<span class="kv"><b>${esc(e.data.wc)}% water change</b></span>`;
+    if(e.data.tasks&&e.data.tasks.length)out+=`<span class="kv">${e.data.tasks.map(esc).join(", ")}</span>`;
+    if(e.data.note)out+=`<span class="kv muted">${esc(e.data.note)}</span>`;
+    return out||`<span class="muted">—</span>`;
+  }
+  if(e.type==="plant"){
+    return `<span class="kv"><b>${esc(e.data.plant)}</b></span>${e.data.qty?`<span class="kv">${esc(e.data.qty)}</span>`:""}${e.data.place?`<span class="kv muted">${esc(e.data.place)}</span>`:""}`;
+  }
+  return `<span class="kv">${esc(e.data.note)}</span>`;
+}
+
+/* =================== ACTIONS =================== */
+function onAddTank(){const n=val("ntName");const l=val("ntLit");addTank(n,l);render();}
+function openTank(id){view.tank=id;formType="test";window.scrollTo(0,0);render();}
+function goHome(){view.tank=null;window.scrollTo(0,0);render();}
+function renameTank(id){const t=getTank(id);if(!t)return;const n=prompt("Tank name:",t.name);if(n!=null){t.name=n.trim()||t.name;const l=prompt("Volume in liters (optional):",t.liters||"");if(l!=null)t.liters=l.trim();save();render();}}
+function deleteTank(id){const t=getTank(id);if(!t)return;if(confirm(`Delete "${t.name}" and all its entries? This cannot be undone.`)){DB.tanks=DB.tanks.filter(x=>x.id!==id);save();goHome();}}
+
+function seedDemo(){
+  const t=addTank("Demo 60P Iwagumi","60");
+  const now=Date.now(),day=86400000;
+  const tests=[
+    {d:21,ph:7.2,kh:5,gh:8,temp:24,no3:5,po4:0.5,fe:0.1},
+    {d:14,ph:6.9,kh:4,gh:7,temp:24,no3:18,po4:1.2,fe:0.2},
+    {d:7, ph:6.8,kh:4,gh:7,temp:24.5,no3:22,po4:1.5,fe:0.2,nh3:0,no2:0},
+    {d:1, ph:6.7,kh:4,gh:7,temp:25,no3:28,po4:2.1,fe:0.3,nh3:0,no2:0}
+  ];
+  for(const x of tests){const data={};["ph","kh","gh","temp","no3","po4","fe","nh3","no2"].forEach(k=>{if(x[k]!=null)data[k]=String(x[k]);});t.entries.push({id:uid(),ts:now-x.d*day,type:"test",data});}
+  t.entries.push({id:uid(),ts:now-20*day,type:"plant",data:{plant:"Eleocharis acicularis (dwarf hairgrass)",qty:"3 pots",place:"foreground carpet"}});
+  t.entries.push({id:uid(),ts:now-7*day,type:"dose",data:{class:"macro",fert:"Tropica Specialised",amt:"6 ml"}});
+  t.entries.push({id:uid(),ts:now-6*day,type:"maint",data:{wc:"50",tasks:["Trim","Glass clean"],note:"first carpet trim"}});
+  t.entries.push({id:uid(),ts:now-2*day,type:"note",data:{note:"Slight GSA on older leaves — bumped PO₄ dosing."}});
+  t.entries.sort((a,b)=>b.ts-a.ts);
+  save();openTank(t.id);
+}
+
+/* =================== PRO: CSV =================== */
+function exportCSV(tid){
+  if(!pro)return openLicense();
+  const t=getTank(tid);if(!t)return;
+  const rows=[["date","type","field","value"]];
+  const flat=(e)=>{
+    const d=fmtDate(e.ts);
+    if(e.type==="test"){for(const k of TILE_ORDER){if(e.data[k]!=null&&e.data[k]!=="")rows.push([d,"test",RANGES[k].label+(RANGES[k].unit?" ("+RANGES[k].unit+")":""),e.data[k]]);}}
+    else if(e.type==="dose"){rows.push([d,"dose","fertilizer",e.data.fert]);rows.push([d,"dose","amount",e.data.amt||""]);rows.push([d,"dose","class",e.data.class||""]);}
+    else if(e.type==="maint"){rows.push([d,"maintenance","water_change_%",e.data.wc||""]);rows.push([d,"maintenance","tasks",(e.data.tasks||[]).join("; ")]);if(e.data.note)rows.push([d,"maintenance","note",e.data.note]);}
+    else if(e.type==="plant"){rows.push([d,"plant","name",e.data.plant]);if(e.data.qty)rows.push([d,"plant","qty",e.data.qty]);if(e.data.place)rows.push([d,"plant","placement",e.data.place]);}
+    else{rows.push([d,"note","text",e.data.note]);}
+  };
+  [...t.entries].sort((a,b)=>a.ts-b.ts).forEach(flat);
+  const csv=rows.map(r=>r.map(c=>{c=String(c==null?"":c);return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c;}).join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv"});const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download=t.name.replace(/[^\w]+/g,"_")+"_plantedtank.csv";a.click();URL.revokeObjectURL(url);
+}
+
+/* =================== PRO: CHARTS (inline SVG) =================== */
+function showCharts(tid){
+  if(!pro)return openLicense();
+  const t=getTank(tid);
+  const tests=t.entries.filter(e=>e.type==="test").sort((a,b)=>a.ts-b.ts);
+  const pane=document.getElementById("proPane");
+  if(tests.length<2){pane.innerHTML=`<div class="muted small" style="margin-top:10px">Log at least 2 water tests to see trend charts.</div>`;return;}
+  const keys=["no3","po4","kh","ph","gh","temp","fe"].filter(k=>tests.some(e=>e.data[k]!=null&&e.data[k]!==""));
+  let h=`<h3 style="margin-top:12px">Parameter trends</h3>`;
+  for(const k of keys)h+=sparkChart(k,tests);
+  h+=`<div class="legend">Dashed band = common planted range (${"NO₃ 10–30, PO₄ 1–3, KH 3–8, pH 6–7.6, temp 22–26"}). Points outside are flagged.</div>`;
+  pane.innerHTML=h;
+  pane.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function sparkChart(k,tests){
+  const r=RANGES[k];
+  const pts=tests.map(e=>({ts:e.ts,v:Number(e.data[k])})).filter(p=>!isNaN(p.v));
+  if(pts.length<2)return "";
+  const W=560,H=120,pl=44,pr=12,pt=14,pb=20;
+  const xs=pts.map(p=>p.ts),vs=pts.map(p=>p.v);
+  let vmin=Math.min(...vs,r.min),vmax=Math.max(...vs,r.max);
+  if(vmin===vmax){vmin-=1;vmax+=1;}
+  const pad=(vmax-vmin)*0.12;vmin-=pad;vmax+=pad;
+  const tmin=Math.min(...xs),tmax=Math.max(...xs);
+  const X=ts=>pl+(tmax===tmin?0.5:(ts-tmin)/(tmax-tmin))*(W-pl-pr);
+  const Y=v=>pt+(1-(v-vmin)/(vmax-vmin))*(H-pt-pb);
+  // range band
+  const by1=Y(Math.min(r.max,vmax)),by2=Y(Math.max(r.min,vmin));
+  let band="";
+  if(r.max>r.min){band=`<rect x="${pl}" y="${by1}" width="${W-pl-pr}" height="${Math.max(0,by2-by1)}" fill="rgba(52,224,196,.08)" stroke="rgba(52,224,196,.35)" stroke-dasharray="4 4"/>`;}
+  // line
+  let d="";pts.forEach((p,i)=>{d+=(i?"L":"M")+X(p.ts).toFixed(1)+" "+Y(p.v).toFixed(1)+" ";});
+  // points
+  let circ="";pts.forEach(p=>{const bad=!inRange(k,p.v);circ+=`<circle cx="${X(p.ts).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="3.5" fill="${bad?"#fbbf24":"#34e0c4"}"/>`;});
+  // y labels
+  const yl=v=>`<text x="${pl-6}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end" font-size="10" fill="#5e8a73">${(+v.toFixed(2))}</text>`;
+  const ylines=`<line x1="${pl}" y1="${Y(vmax-pad).toFixed(1)}" x2="${W-pr}" y2="${Y(vmax-pad).toFixed(1)}" stroke="#1c4533"/><line x1="${pl}" y1="${Y(vmin+pad).toFixed(1)}" x2="${W-pr}" y2="${Y(vmin+pad).toFixed(1)}" stroke="#1c4533"/>`;
+  const last=pts[pts.length-1].v;
+  return `<div class="chart"><h4>${r.label}${r.unit?" ("+r.unit+")":""} — latest ${last}</h4>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">
+      ${ylines}${band}
+      ${yl(vmax-pad)}${yl(vmin+pad)}
+      <path d="${d}" fill="none" stroke="#4ade80" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${circ}
+    </svg></div>`;
+}
+
+/* =================== PRO: DOSING SCHEDULE =================== */
+function showSchedule(tid){
+  if(!pro)return openLicense();
+  const t=getTank(tid);
+  const pane=document.getElementById("proPane");
+  const L=Number(t.liters)||0;
+  // Estimate from recent dosing entries: build a weekly plan
+  const doses=t.entries.filter(e=>e.type==="dose");
+  let recent={};
+  for(const e of doses){const key=e.data.fert;if(!recent[key])recent[key]={fert:key,class:e.data.class,amt:e.data.amt,count:0};recent[key].count++;}
+  const list=Object.values(recent).slice(0,8);
+  // EI-style suggestion scaled to volume (per ~40L baseline)
+  const scale=L?(L/40):1;
+  const ei=[
+    {d:"Mon",task:`Macro dose (${(scale).toFixed(1)}× base): ~${Math.round(7.5*scale)} ppm NO₃ target`},
+    {d:"Tue",task:"Micro / trace dose (Fe ~0.1–0.2 ppm)"},
+    {d:"Wed",task:`Macro dose (${(scale).toFixed(1)}× base)`},
+    {d:"Thu",task:"Micro / trace dose"},
+    {d:"Fri",task:`Macro dose (${(scale).toFixed(1)}× base)`},
+    {d:"Sat",task:"Micro / trace dose"},
+    {d:"Sun",task:`Water change ~${L?Math.round(L*0.5):"50%"}${L?" L (50%)":""} + reset week`}
+  ];
+  let h=`<h3 style="margin-top:12px">Weekly dosing schedule</h3>`;
+  h+=`<div class="muted small" style="margin-bottom:8px">EI-style template${L?` scaled to ${L} L`:""}. Adjust to your plant mass &amp; CO₂ — fewer nutrients for low-tech, more for high-light/CO₂. Always confirm with water tests.</div>`;
+  h+=`<table style="width:100%;border-collapse:collapse;font-size:14px">`;
+  for(const r of ei)h+=`<tr><td style="padding:7px 10px;border-bottom:1px solid var(--line);color:var(--leaf);font-weight:700;width:54px">${r.d}</td><td style="padding:7px 10px;border-bottom:1px solid var(--line)">${esc(r.task)}</td></tr>`;
+  h+=`</table>`;
+  if(list.length){
+    h+=`<h4 style="margin:14px 0 6px;color:var(--muted)">Your logged ferts</h4><div class="row">`;
+    for(const f of list)h+=`<span class="kv" style="border:1px solid var(--line2);padding:6px 10px;border-radius:10px;margin:0"><b>${esc(f.fert)}</b> ${f.amt?esc(f.amt):""} <span class="tiny muted">×${f.count}</span></span>`;
+    h+=`</div><div class="tiny muted" style="margin-top:6px">Tip: log each dose so amounts auto-populate your routine.</div>`;
+  }else{
+    h+=`<div class="tiny muted" style="margin-top:8px">Log some dosing entries and they'll appear here for quick repeat.</div>`;
+  }
+  pane.innerHTML=h;
+  pane.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+/* =================== LICENSE MODAL =================== */
+function openLicense(){
+  const old=document.getElementById("licBg");if(old)old.remove();
+  const bg=document.createElement("div");bg.className="bg";bg.id="licBg";
+  bg.innerHTML=`<div class="modal">
+    <span class="x" onclick="document.getElementById('licBg').remove()">×</span>
+    <h2>🌿 PlantedTank Pro — ${PAY.price} ${PAY.token}</h2>
+    <p class="muted small">One-time payment. Unlock the power-user tools — yours forever, fully offline. Your logs never leave your browser.</p>
+    <ul class="feat">
+      <li>CSV export of every tank's full log</li>
+      <li>Parameter trend charts (NO₃, PO₄, KH, pH, GH, temp, Fe)</li>
+      <li>Weekly fertilizer dosing schedule, volume-scaled</li>
+      <li>Supports continued development of the app</li>
+    </ul>
+    <div class="pay">
+      <label>Pay ${PAY.price} ${PAY.token} on ${PAY.chain} to:</label>
+      <div class="copyrow">
+        <input id="walletF" readonly value="${PAY.wallet}">
+        <button class="btn sm" onclick="copyWallet()">Copy</button>
+      </div>
+      <div class="tiny muted" style="margin-top:8px">After paying, paste your transaction hash + email below and click <b>Get my key</b>. An automated issuer verifies the on-chain payment and replies with your license — usually within a minute.</div>
+      <div class="grid" style="margin-top:10px;gap:8px">
+        <div class="field"><label>Transaction hash</label><input id="txh" placeholder="0x… (64 hex)"></div>
+        <div class="field"><label>Email (for your records)</label><input id="email" placeholder="you@example.com"></div>
+      </div>
+      <button class="btn pri" style="margin-top:10px;width:100%" onclick="requestKey()">Get my key →</button>
+    </div>
+    <div class="err" id="licErr"></div>
+    <div class="ok" id="licOk"></div>
+    <details>
+      <summary>Have a key?</summary>
+      <div style="margin-top:8px">
+        <label>Paste your license key</label>
+        <textarea id="licKey" placeholder="payload.signature"></textarea>
+        <button class="btn pri" style="margin-top:8px" onclick="activateKey()">Activate</button>
+      </div>
+    </details>
+  </div>`;
+  bg.addEventListener("click",ev=>{if(ev.target===bg)bg.remove();});
+  document.body.appendChild(bg);
+}
+function copyWallet(){const w=document.getElementById("walletF");w.select();try{navigator.clipboard.writeText(PAY.wallet);}catch(e){document.execCommand("copy");}const ok=document.getElementById("licOk");if(ok){ok.textContent="Wallet copied";setTimeout(()=>{if(ok)ok.textContent="";},1500);}}
+function requestKey(){
+  const tx=val("txh"),em=val("email");
+  const err=document.getElementById("licErr");
+  if(!/0x[0-9a-fA-F]{64}/.test(tx)){if(err)err.textContent="Enter a valid 0x… transaction hash (64 hex chars).";return;}
+  if(err)err.textContent="";
+  window.open(PAY.contact+"?title=PlantedTank%20Pro%20license%20request&body="+encodeURIComponent("Payment tx hash: "+tx+"\nEmail: "+em));
+}
+function activateKey(){const k=val("licKey");if(!k){const e=document.querySelector("#licErr");if(e)e.textContent="Paste a key first.";return;}applyLicense(k,false);}
+
+document.getElementById("proBtn").onclick=openLicense;
+
+/* =================== BOOT =================== */
+(function boot(){
+  const saved=localStorage.getItem("plantedtank_license");
+  if(saved)applyLicense(saved,true);
+  render();
+})();
+</script>
+</body>
+</html>
